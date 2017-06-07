@@ -1,6 +1,6 @@
 {
     "Parameters": {
-        "KeyName": "aclab.pem",
+        "KeyName": "aclab",
         "DBUser": "cloudadmin",
         "DBPassword": "Password1"
     },
