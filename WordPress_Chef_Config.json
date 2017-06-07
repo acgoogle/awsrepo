@@ -1,6 +1,5 @@
 {
     "Parameters": {
-        "NameOfTemplateParameter": "ValueOfParameter",
         "KeyName": "aclab.pem",
         "DBUser": "cloudadmin",
         "DBPassword": "Password1"
