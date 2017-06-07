@@ -7,10 +7,12 @@
     },
     "StackPolicy": {
         "Statement": [
-            "Effect": "Allow",
-            "NotAction": "Update:Delete",
-            "Principal": "*",
-            "Resource": "*"
+            {
+                "Effect" : "Allow",
+                "NotAction" : "Update:Delete",
+                "Principal": "*",
+                "Resource" : "*"
+            }
         ]
     }
 }
