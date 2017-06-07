@@ -1,0 +1,16 @@
+{
+    "Parameters": {
+        "NameOfTemplateParameter": "ValueOfParameter",
+        "KeyName": "aclab.pem",
+        "DBUser": "cloudadmin",
+        "DBPassword": "Password1"
+    },
+    "StackPolicy": {
+        "Statement": [
+            "Effect": "Allow",
+            "NotAction": "Update:Delete",
+            "Principal": "*",
+            "Resource": "*"
+        ]
+    }
+}
