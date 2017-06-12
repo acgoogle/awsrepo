@@ -1,0 +1,982 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Step 3 of 3: Launches a Jenkins server.",
+    "Parameters": {
+        "InstanceType": {
+            "Description": "WebServer EC2 instance type",
+            "Type": "String",
+            "Default": "t2.micro",
+            "AllowedValues": [
+                "t1.micro",
+                "t2.nano",
+                "t2.micro",
+                "t2.small",
+                "t2.medium",
+                "t2.large",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge",
+                "m2.xlarge",
+                "m2.2xlarge",
+                "m2.4xlarge",
+                "m3.medium",
+                "m3.large",
+                "m3.xlarge",
+                "m3.2xlarge",
+                "m4.large",
+                "m4.xlarge",
+                "m4.2xlarge",
+                "m4.4xlarge",
+                "m4.10xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "c3.large",
+                "c3.xlarge",
+                "c3.2xlarge",
+                "c3.4xlarge",
+                "c3.8xlarge",
+                "c4.large",
+                "c4.xlarge",
+                "c4.2xlarge",
+                "c4.4xlarge",
+                "c4.8xlarge",
+                "g2.2xlarge",
+                "g2.8xlarge",
+                "r3.large",
+                "r3.xlarge",
+                "r3.2xlarge",
+                "r3.4xlarge",
+                "r3.8xlarge",
+                "i2.xlarge",
+                "i2.2xlarge",
+                "i2.4xlarge",
+                "i2.8xlarge",
+                "d2.xlarge",
+                "d2.2xlarge",
+                "d2.4xlarge",
+                "d2.8xlarge",
+                "hi1.4xlarge",
+                "hs1.8xlarge",
+                "cr1.8xlarge",
+                "cc2.8xlarge",
+                "cg1.4xlarge"
+            ],
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        },
+        "KeyPairName": {
+            "Description": "Name of an existing EC2 keypair to enable SSH access to the instances",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "Default": "aclab"
+        },
+        "DnsPrefix": {
+            "Description": "Prefix for Jenkins' DNS record (<prefix>.<zone>)",
+            "Type": "String",
+            "Default": "jenkins"
+        },
+        "DnsZone": {
+            "Description": "Route53-hosted zone to use for the DNS record (<prefix>.<zone>)",
+            "Type": "String",
+            "Default": "achencorp.com"
+        },
+        "DockerImage": {
+            "Description": "Path of the Jenkins Docker image (format: '[<registry>[:<port>]/]<repository>:<version>')",
+            "Type": "String",
+            "Default": "aclab/jenkins"
+        },
+        "S3Bucket": {
+            "Description": "Existing S3 bucket to use for Jenkins backups and restores",
+            "Type": "String",
+            "Default": "aclab-jenkins"
+        },
+        "S3Prefix": {
+            "Description": "[Optional] Key prefix to use for Jenkins backups",
+            "Type": "String",
+            "Default": "aclab"
+        },
+        "Subnets": {
+            "Description": "List of VPC subnet IDs for the cluster",
+            "Type": "List<AWS::EC2::Subnet::Id>"
+        },
+        "VpcId": {
+            "Description": "VPC associated with the provided subnets",
+            "Type": "AWS::EC2::VPC::Id"
+        }
+    },
+    "Mappings": {
+        "AWSInstanceType2Arch": {
+            "t1.micro": {
+                "Arch": "PV64"
+            },
+            "t2.nano": {
+                "Arch": "HVM64"
+            },
+            "t2.micro": {
+                "Arch": "HVM64"
+            },
+            "t2.small": {
+                "Arch": "HVM64"
+            },
+            "t2.medium": {
+                "Arch": "HVM64"
+            },
+            "t2.large": {
+                "Arch": "HVM64"
+            },
+            "m1.small": {
+                "Arch": "PV64"
+            },
+            "m1.medium": {
+                "Arch": "PV64"
+            },
+            "m1.large": {
+                "Arch": "PV64"
+            },
+            "m1.xlarge": {
+                "Arch": "PV64"
+            },
+            "m2.xlarge": {
+                "Arch": "PV64"
+            },
+            "m2.2xlarge": {
+                "Arch": "PV64"
+            },
+            "m2.4xlarge": {
+                "Arch": "PV64"
+            },
+            "m3.medium": {
+                "Arch": "HVM64"
+            },
+            "m3.large": {
+                "Arch": "HVM64"
+            },
+            "m3.xlarge": {
+                "Arch": "HVM64"
+            },
+            "m3.2xlarge": {
+                "Arch": "HVM64"
+            },
+            "m4.large": {
+                "Arch": "HVM64"
+            },
+            "m4.xlarge": {
+                "Arch": "HVM64"
+            },
+            "m4.2xlarge": {
+                "Arch": "HVM64"
+            },
+            "m4.4xlarge": {
+                "Arch": "HVM64"
+            },
+            "m4.10xlarge": {
+                "Arch": "HVM64"
+            },
+            "c1.medium": {
+                "Arch": "PV64"
+            },
+            "c1.xlarge": {
+                "Arch": "PV64"
+            },
+            "c3.large": {
+                "Arch": "HVM64"
+            },
+            "c3.xlarge": {
+                "Arch": "HVM64"
+            },
+            "c3.2xlarge": {
+                "Arch": "HVM64"
+            },
+            "c3.4xlarge": {
+                "Arch": "HVM64"
+            },
+            "c3.8xlarge": {
+                "Arch": "HVM64"
+            },
+            "c4.large": {
+                "Arch": "HVM64"
+            },
+            "c4.xlarge": {
+                "Arch": "HVM64"
+            },
+            "c4.2xlarge": {
+                "Arch": "HVM64"
+            },
+            "c4.4xlarge": {
+                "Arch": "HVM64"
+            },
+            "c4.8xlarge": {
+                "Arch": "HVM64"
+            },
+            "g2.2xlarge": {
+                "Arch": "HVMG2"
+            },
+            "g2.8xlarge": {
+                "Arch": "HVMG2"
+            },
+            "r3.large": {
+                "Arch": "HVM64"
+            },
+            "r3.xlarge": {
+                "Arch": "HVM64"
+            },
+            "r3.2xlarge": {
+                "Arch": "HVM64"
+            },
+            "r3.4xlarge": {
+                "Arch": "HVM64"
+            },
+            "r3.8xlarge": {
+                "Arch": "HVM64"
+            },
+            "i2.xlarge": {
+                "Arch": "HVM64"
+            },
+            "i2.2xlarge": {
+                "Arch": "HVM64"
+            },
+            "i2.4xlarge": {
+                "Arch": "HVM64"
+            },
+            "i2.8xlarge": {
+                "Arch": "HVM64"
+            },
+            "d2.xlarge": {
+                "Arch": "HVM64"
+            },
+            "d2.2xlarge": {
+                "Arch": "HVM64"
+            },
+            "d2.4xlarge": {
+                "Arch": "HVM64"
+            },
+            "d2.8xlarge": {
+                "Arch": "HVM64"
+            },
+            "hi1.4xlarge": {
+                "Arch": "HVM64"
+            },
+            "hs1.8xlarge": {
+                "Arch": "HVM64"
+            },
+            "cr1.8xlarge": {
+                "Arch": "HVM64"
+            },
+            "cc2.8xlarge": {
+                "Arch": "HVM64"
+            }
+        },
+        "AWSInstanceType2NATArch": {
+            "t1.micro": {
+                "Arch": "NATPV64"
+            },
+            "t2.nano": {
+                "Arch": "NATHVM64"
+            },
+            "t2.micro": {
+                "Arch": "NATHVM64"
+            },
+            "t2.small": {
+                "Arch": "NATHVM64"
+            },
+            "t2.medium": {
+                "Arch": "NATHVM64"
+            },
+            "t2.large": {
+                "Arch": "NATHVM64"
+            },
+            "m1.small": {
+                "Arch": "NATPV64"
+            },
+            "m1.medium": {
+                "Arch": "NATPV64"
+            },
+            "m1.large": {
+                "Arch": "NATPV64"
+            },
+            "m1.xlarge": {
+                "Arch": "NATPV64"
+            },
+            "m2.xlarge": {
+                "Arch": "NATPV64"
+            },
+            "m2.2xlarge": {
+                "Arch": "NATPV64"
+            },
+            "m2.4xlarge": {
+                "Arch": "NATPV64"
+            },
+            "m3.medium": {
+                "Arch": "NATHVM64"
+            },
+            "m3.large": {
+                "Arch": "NATHVM64"
+            },
+            "m3.xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "m3.2xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "m4.large": {
+                "Arch": "NATHVM64"
+            },
+            "m4.xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "m4.2xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "m4.4xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "m4.10xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "c1.medium": {
+                "Arch": "NATPV64"
+            },
+            "c1.xlarge": {
+                "Arch": "NATPV64"
+            },
+            "c3.large": {
+                "Arch": "NATHVM64"
+            },
+            "c3.xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "c3.2xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "c3.4xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "c3.8xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "c4.large": {
+                "Arch": "NATHVM64"
+            },
+            "c4.xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "c4.2xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "c4.4xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "c4.8xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "g2.2xlarge": {
+                "Arch": "NATHVMG2"
+            },
+            "g2.8xlarge": {
+                "Arch": "NATHVMG2"
+            },
+            "r3.large": {
+                "Arch": "NATHVM64"
+            },
+            "r3.xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "r3.2xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "r3.4xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "r3.8xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "i2.xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "i2.2xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "i2.4xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "i2.8xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "d2.xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "d2.2xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "d2.4xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "d2.8xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "hi1.4xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "hs1.8xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "cr1.8xlarge": {
+                "Arch": "NATHVM64"
+            },
+            "cc2.8xlarge": {
+                "Arch": "NATHVM64"
+            }
+        },
+        "AWSRegionArch2AMI": {
+            "us-east-1": {
+                "PV64": "ami-2a69aa47",
+                "HVM64": "ami-6869aa05",
+                "HVMG2": "ami-61e27177"
+            },
+            "us-west-2": {
+                "PV64": "ami-7f77b31f",
+                "HVM64": "ami-7172b611",
+                "HVMG2": "ami-60aa3700"
+            },
+            "us-west-1": {
+                "PV64": "ami-a2490dc2",
+                "HVM64": "ami-31490d51",
+                "HVMG2": "ami-4b694d2b"
+            },
+            "eu-west-1": {
+                "PV64": "ami-4cdd453f",
+                "HVM64": "ami-f9dd458a",
+                "HVMG2": "ami-2955524f"
+            },
+            "eu-west-2": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-886369ec",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "eu-central-1": {
+                "PV64": "ami-6527cf0a",
+                "HVM64": "ami-ea26ce85",
+                "HVMG2": "ami-81ac71ee"
+            },
+            "ap-northeast-1": {
+                "PV64": "ami-3e42b65f",
+                "HVM64": "ami-374db956",
+                "HVMG2": "ami-46220c21"
+            },
+            "ap-northeast-2": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-2b408b45",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "ap-southeast-1": {
+                "PV64": "ami-df9e4cbc",
+                "HVM64": "ami-a59b49c6",
+                "HVMG2": "ami-c212aba1"
+            },
+            "ap-southeast-2": {
+                "PV64": "ami-63351d00",
+                "HVM64": "ami-dc361ebf",
+                "HVMG2": "ami-0ad2db69"
+            },
+            "ap-south-1": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-ffbdd790",
+                "HVMG2": "ami-ca3042a5"
+            },
+            "us-east-2": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-f6035893",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "ca-central-1": {
+                "PV64": "NOT_SUPPORTED",
+                "HVM64": "ami-730ebd17",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "sa-east-1": {
+                "PV64": "ami-1ad34676",
+                "HVM64": "ami-6dd04501",
+                "HVMG2": "NOT_SUPPORTED"
+            },
+            "cn-north-1": {
+                "PV64": "ami-77559f1a",
+                "HVM64": "ami-8e6aa0e3",
+                "HVMG2": "NOT_SUPPORTED"
+            }
+        }
+    },
+    "Resources": {
+        "IAMUser": {
+            "Type": "AWS::IAM::User",
+            "Properties": {
+                "Policies": [
+                    {
+                        "PolicyName": "S3Access",
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "s3:*",
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:s3:::",
+                                                {
+                                                    "Ref": "S3Bucket"
+                                                },
+                                                "/*"
+                                            ]
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "PolicyName": "IAMAccess",
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "NotAction": "iam:*",
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "HostKeys": {
+            "Type": "AWS::IAM::AccessKey",
+            "Properties": {
+                "UserName": {
+                    "Ref": "IAMUser"
+                }
+            }
+        },
+        "ServerGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "Properties": {
+                "AvailabilityZones": {
+                    "Fn::GetAZs": ""
+                },
+                "LaunchConfigurationName": {
+                    "Ref": "LaunchConfig"
+                },
+                "MinSize": "1",
+                "MaxSize": "1",
+                "DesiredCapacity": "1",
+                "LoadBalancerNames": [
+                    {
+                        "Ref": "ElasticLoadBalancer"
+                    }
+                ],
+                "VPCZoneIdentifier": {
+                    "Ref": "Subnets"
+                }
+            }
+        },
+        "LaunchConfig": {
+            "Type": "AWS::AutoScaling::LaunchConfiguration",
+            "Metadata": {
+                "AWS::CloudFormation::Init": {
+                    "config": {
+                        "packages": {
+                            "python": {
+                                "awscli": []
+                            }
+                        },
+                        "files": {
+                            "/etc/aws.conf": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "[default]",
+                                            "aws_access_key_id={{access_key}}",
+                                            "aws_secret_access_key={{secret_key}}"
+                                        ]
+                                    ]
+                                },
+                                "context": {
+                                    "access_key": {
+                                        "Ref": "HostKeys"
+                                    },
+                                    "secret_key": {
+                                        "Fn::GetAtt": [
+                                            "HostKeys",
+                                            "SecretAccessKey"
+                                        ]
+                                    }
+                                },
+                                "mode": "000700",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/usr/local/bin/jenkins-restore": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "#!/bin/bash -e",
+                                            "",
+                                            "USAGE=\"Usage: $0 S3_TARGET JENKINS_HOME\\n",
+                                            "\\n",
+                                            "Example:\\n",
+                                            "$0 s3://mybucket/jenkins/jenkins-201405011901.tar.gz /var/lib/jenkins\\n",
+                                            "\\n",
+                                            "If S3_TARGET is a directory, restore from the newest file. Make sure to include the trailing slash:\\n",
+                                            "$0 s3://mybucket/jenkins/ /var/lib/jenkins\"",
+                                            "",
+                                            "S3_TARGET=$1",
+                                            "JENKINS_HOME=$2",
+                                            "if [[ -z \"`echo $S3_TARGET|grep '^s3://'`\" ]]; then",
+                                            "    echo -e $USAGE",
+                                            "    exit 1",
+                                            "fi",
+                                            "",
+                                            "if [[ \"$S3_TARGET\" == */ ]]; then",
+                                            "    S3_TARGET=$S3_TARGET`aws s3 ls $S3_TARGET|tail -1|awk '{print $NF}'`",
+                                            "fi",
+                                            "",
+                                            "LOCAL_BACKUP=/tmp/`basename $S3_TARGET`",
+                                            "aws s3 cp $S3_TARGET $LOCAL_BACKUP",
+                                            "",
+                                            "if [[ -d \"$JENKINS_HOME\" ]]; then",
+                                            "    read -p \"Delete existing $JENKINS_HOME? (y/n) \" -n 1 -r",
+                                            "    echo",
+                                            "    if [[ $REPLY =~ ^[Yy]$ ]]; then",
+                                            "        rm -rf $JENKINS_HOME",
+                                            "    else",
+                                            "        echo \"Bailing out\"",
+                                            "        exit 1",
+                                            "    fi",
+                                            "fi",
+                                            "",
+                                            "mkdir -p $JENKINS_HOME",
+                                            "tar zxf $LOCAL_BACKUP -C $JENKINS_HOME",
+                                            "rm -f $LOCAL_BACKUP"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/usr/local/bin/jenkins-backup": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "#!/bin/bash -e",
+                                            "",
+                                            "USAGE=\"Usage: $0 JENKINS_HOME S3_TARGET\\n",
+                                            "\\n",
+                                            "Examples:\\n",
+                                            "$0 /var/lib/jenkins s3://mybucket/jenkins/jenkins-201405011901.tar.gz\"",
+                                            "",
+                                            "JENKINS_HOME=$1",
+                                            "S3_TARGET=$2",
+                                            "if [[ -z \"`echo $S3_TARGET|grep '^s3://'`\" || ! -d \"$JENKINS_HOME\" ]]; then",
+                                            "    echo -e $USAGE",
+                                            "    exit 1",
+                                            "fi",
+                                            "",
+                                            "LOCAL_BACKUP=/tmp/`basename $S3_TARGET`",
+                                            "",
+                                            "tar -C $JENKINS_HOME -zcf $LOCAL_BACKUP .\\",
+                                            "    --exclude \"config-history/\" \\",
+                                            "    --exclude \"config-history/*\" \\",
+                                            "    --exclude \"jobs/*/workspace*\" \\",
+                                            "    --exclude \"jobs/*/builds/*/archive\" \\",
+                                            "    --exclude \"plugins/*/*\" \\",
+                                            "    --exclude \"plugins/*.bak\" \\",
+                                            "    --exclude \"war\" \\",
+                                            "    --exclude \"cache\"",
+                                            "",
+                                            "aws s3 cp $LOCAL_BACKUP $S3_TARGET",
+                                            "rm -f $LOCAL_BACKUP"
+                                        ]
+                                    ]
+                                },
+                                "mode": "000755",
+                                "owner": "root",
+                                "group": "root"
+                            },
+                            "/etc/cron.d/jenkins": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "\n",
+                                        [
+                                            "AWS_CONFIG_FILE=/etc/aws.conf",
+                                            "PATH=/bin:/usr/bin::/usr/local/bin",
+                                            "59 0 * * * root jenkins-backup /var/lib/jenkins s3://{{s3_bucket}}/{{s3_prefix}}jenkins-`date +\\%Y\\%m\\%d\\%H\\%M.tar.gz` >> /var/log/jenkins-backup.log 2>&1\n"
+                                        ]
+                                    ]
+                                },
+                                "context": {
+                                    "s3_bucket": {
+                                        "Ref": "S3Bucket"
+                                    },
+                                    "s3_prefix": {
+                                        "Ref": "S3Prefix"
+                                    }
+                                },
+                                "mode": "000700",
+                                "owner": "root",
+                                "group": "root"
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties": {
+                "KeyName": {
+                    "Ref": "KeyPairName"
+                },
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "AWSRegionArch2AMI",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        {
+                            "Fn::FindInMap": [
+                                "AWSInstanceType2Arch",
+                                {
+                                    "Ref": "InstanceType"
+                                },
+                                "Arch"
+                            ]
+                        }
+                    ]
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "ServerSecurityGroup"
+                    },
+                    {
+                        "Ref": "AdminSecurityGroup"
+                    }
+                ],
+                "AssociatePublicIpAddress": "true",
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash -ex\n",
+                                "# Helper function\n",
+                                "function error_exit\n",
+                                "{\n",
+                                "  cfn-signal -e 1 -r \"$1\" '",
+                                {
+                                    "Ref": "WaitHandle"
+                                },
+                                "'\n",
+                                "  exit 1\n",
+                                "}\n",
+                                "cfn-init -s ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                " -r LaunchConfig ",
+                                "    --access-key ",
+                                {
+                                    "Ref": "HostKeys"
+                                },
+                                "    --secret-key ",
+                                {
+                                    "Fn::GetAtt": [
+                                        "HostKeys",
+                                        "SecretAccessKey"
+                                    ]
+                                },
+                                "    --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                " || error_exit 'Failed to run cfn-init'\n",
+                                "# Post-cfn work\n",
+                                "# Handle case where cron doesn't detect the new /etc/cron.d file\n",
+                                "service cron restart\n",
+                                "# Attempt to restore from backup\n",
+                                "export AWS_CONFIG_FILE=/etc/aws.conf\n",
+                                "jenkins-restore s3://",
+                                {
+                                    "Ref": "S3Bucket"
+                                },
+                                "/",
+                                {
+                                    "Ref": "S3Prefix"
+                                },
+                                " /var/lib/jenkins || true # ignore errors\n",
+                                "# Start Jenkins\n",
+                                "docker pull ",
+                                {
+                                    "Ref": "DockerImage"
+                                },
+                                "\n",
+                                "runit-service create jenkins docker run",
+                                "   -p 8080:8080",
+                                "   -v /var/lib/jenkins:/jenkins",
+                                "   ",
+                                {
+                                    "Ref": "DockerImage"
+                                },
+                                "|| error_exit 'Failed to launch Docker container'\n",
+                                "runit-service enable jenkins\n",
+                                "# All is well, signal success\n",
+                                "cfn-signal -e 0 -r \"Stack setup complete\" '",
+                                {
+                                    "Ref": "WaitHandle"
+                                },
+                                "'\n",
+                                "#EOF"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "LbSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Jenkins LBs",
+                "VpcId": {
+                    "Ref": "VpcId"
+                }
+            }
+        },
+        "ServerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Jenkins servers",
+                "VpcId": {
+                    "Ref": "VpcId"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "8080",
+                        "ToPort": "8080",
+                        "SourceSecurityGroupId": {
+                            "Ref": "LbSecurityGroup"
+                        }
+                    }
+                ]
+            }
+        },
+        "AdminSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable HTTP access via port 80 locked down to the ELB and SSH access",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VpcId"
+                }
+            }
+        },
+        "ElasticLoadBalancer": {
+            "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+            "Properties": {
+                "SecurityGroups": [
+                    {
+                        "Ref": "LbSecurityGroup"
+                    },
+                    {
+                        "Ref": "AdminSecurityGroup"
+                    }
+                ],
+                "Subnets": {
+                    "Ref": "Subnets"
+                },
+                "Listeners": [
+                    {
+                        "LoadBalancerPort": "80",
+                        "InstancePort": "8080",
+                        "Protocol": "HTTP"
+                    }
+                ],
+                "HealthCheck": {
+                    "Target": "HTTP:8080/",
+                    "HealthyThreshold": "3",
+                    "UnhealthyThreshold": "5",
+                    "Interval": "30",
+                    "Timeout": "5"
+                }
+            }
+        },
+        "DnsRecord": {
+            "Type": "AWS::Route53::RecordSet",
+            "Properties": {
+                "HostedZoneName": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            {
+                                "Ref": "DnsZone"
+                            },
+                            "."
+                        ]
+                    ]
+                },
+                "Comment": "Docker Registry",
+                "Name": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            {
+                                "Ref": "DnsPrefix"
+                            },
+                            ".",
+                            {
+                                "Ref": "DnsZone"
+                            },
+                            "."
+                        ]
+                    ]
+                },
+                "Type": "CNAME",
+                "TTL": "900",
+                "ResourceRecords": [
+                    {
+                        "Fn::GetAtt": [
+                            "ElasticLoadBalancer",
+                            "DNSName"
+                        ]
+                    }
+                ]
+            }
+        },
+        "WaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle"
+        }
+    },
+    "Outputs": {
+        "DnsAddress": {
+            "Description": "Jenkins URL",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "http://",
+                        {
+                            "Ref": "DnsRecord"
+                        }
+                    ]
+                ]
+            }
+        }
+    }
+}

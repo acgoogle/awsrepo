@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
     "Parameters": {
         "KeyName": "aclab",
@@ -14,4 +15,22 @@
             }
         ]
     }
+=======
+{
+    "Parameters": {
+        "KeyName": "aclab",
+        "DBUser": "cloudadmin",
+        "DBPassword": "Password1"
+    },
+    "StackPolicy": {
+        "Statement": [
+            {
+                "Effect" : "Allow",
+                "NotAction" : "Update:Delete",
+                "Principal": "*",
+                "Resource" : "*"
+            }
+        ]
+    }
+>>>>>>> 0cbd47c20dddd824c6b63a39d34027a415daf9da
 }
